@@ -45,6 +45,43 @@ export class DeepNoteSynthesizer {
     this.masterGain.gain.value = 0.1; // Start quiet
   }
 
+  /**
+   * Calculate equal loudness compensation gain based on ISO 226 40-phon curve
+   * Reference: 1000Hz = 0dB compensation
+   */
+  private calculateCompensationGain(frequency: number): number {
+    // Much simpler and more intuitive equal loudness compensation
+    // Based on the general shape of equal loudness curves
+    
+    const f = Math.max(20, Math.min(20000, frequency));
+    
+    // Simple approximation: boost low frequencies more than high frequencies
+    // Reference: 1000Hz = 1.0 (no compensation)
+    let gain: number;
+    
+    if (f < 100) {
+      // Very low frequencies need significant boost
+      gain = 3.0;
+    } else if (f < 200) {
+      // Low frequencies need moderate boost
+      gain = 2.0;
+    } else if (f < 500) {
+      // Lower mids need slight boost
+      gain = 1.5;
+    } else if (f < 2000) {
+      // Mid frequencies are our reference
+      gain = 1.0;
+    } else if (f < 5000) {
+      // Upper mids need slight boost
+      gain = 1.2;
+    } else {
+      // High frequencies need moderate boost
+      gain = 1.5;
+    }
+    
+    return gain;
+  }
+
   public setVisualizationCallback(callback: (data: AudioVisualization) => void): void {
     this.onVisualizationUpdate = callback;
   }
@@ -64,12 +101,27 @@ export class DeepNoteSynthesizer {
     this.scheduleAudioEvents();
     this.startVisualization();
 
-        // Schedule auto-stop after 10 seconds
+    this.scheduleEnding();
+  }
+
+  private scheduleEnding() {
+    // Schedule fade-out starting at 9 seconds, complete stop at 10 seconds
     setTimeout(() => {
       if (this.phase !== 'idle') {
-        this.stop();
+        const currentTime = this.audioContext.currentTime;
+        const fadeTime = 1.0; // 1 second fade
+        
+        // Exponential fade-out on master gain (sounds more natural)
+        this.masterGain.gain.exponentialRampToValueAtTime(0.001, currentTime + fadeTime);
+        
+        // Stop everything after fade completes
+        setTimeout(() => {
+          if (this.phase !== 'idle') {
+            this.stop();
+          }
+        }, fadeTime * 1000);
       }
-    }, 10000);
+    }, 11000); // Start fade at 11 seconds
   }
 
   public stop(): void {
@@ -99,6 +151,9 @@ export class DeepNoteSynthesizer {
       // Assign target frequency (cycle through the D major chord)
       const targetFrequency = this.targetFrequencies[i % this.targetFrequencies.length];
       
+      // Calculate equal loudness compensation for the target frequency
+      const compensationGain = this.calculateCompensationGain(targetFrequency);
+      
       oscillator.type = 'sawtooth';
       oscillator.frequency.value = startFrequency;
       
@@ -112,7 +167,8 @@ export class DeepNoteSynthesizer {
         gainNode,
         startFrequency,
         targetFrequency,
-        currentFrequency: startFrequency
+        currentFrequency: startFrequency,
+        compensationGain
       });
       
       oscillator.start();
@@ -129,12 +185,15 @@ export class DeepNoteSynthesizer {
     this.masterGain.gain.setValueAtTime(0.01, currentTime);
     this.masterGain.gain.exponentialRampToValueAtTime(0.3, currentTime + 1);
     
-    // Individual voice gain envelopes
+    // Individual voice gain envelopes with compensation
     this.voices.forEach((voice, index) => {
       // Stagger voice entrances slightly
       const entryDelay = Math.random() * 0.5;
+      const baseGain = 0.1;
+      const compensatedGain = baseGain * voice.compensationGain;
+      
       voice.gainNode.gain.setValueAtTime(0, currentTime + entryDelay);
-      voice.gainNode.gain.exponentialRampToValueAtTime(0.1, currentTime + entryDelay + 0.5);
+      voice.gainNode.gain.exponentialRampToValueAtTime(compensatedGain, currentTime + entryDelay + 0.5);
     });
     
     // Schedule frequency convergence
@@ -192,13 +251,19 @@ export class DeepNoteSynthesizer {
         }
       });
       
-      // Generate amplitude data (simplified)
-      const amplitudes = this.voices.map(() => 0.5 + Math.random() * 0.5);
+      // Generate amplitude data based on actual voice gains
+      const baseAmplitudes = this.voices.map(() => 0.5 + Math.random() * 0.5);
+      const baseGain = 0.1;
+      const originalAmplitudes = baseAmplitudes.map(amp => baseGain * amp);
+      const compensatedAmplitudes = this.voices.map((voice, index) => 
+        originalAmplitudes[index] * voice.compensationGain
+      );
       
       if (this.onVisualizationUpdate) {
         this.onVisualizationUpdate({
           frequencies,
-          amplitudes,
+          originalAmplitudes,
+          compensatedAmplitudes,
           timestamp: currentTime
         });
       }

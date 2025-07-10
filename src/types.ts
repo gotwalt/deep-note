@@ -4,6 +4,7 @@ export interface DeepNoteVoice {
   startFrequency: number;
   targetFrequency: number;
   currentFrequency: number;
+  compensationGain: number;
 }
 
 export interface DeepNoteConfig {
@@ -17,7 +18,8 @@ export interface DeepNoteConfig {
 
 export interface AudioVisualization {
   frequencies: number[];
-  amplitudes: number[];
+  originalAmplitudes: number[];
+  compensatedAmplitudes: number[];
   timestamp: number;
 }
 

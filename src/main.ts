@@ -82,9 +82,13 @@ class DeepNoteApp {
       this.updatePhaseDisplay(phase, elapsed);
       this.updateTimeDisplay(elapsed);
       
-      if (phase !== 'idle') {
-        requestAnimationFrame(updateStatus);
+      // Check if synthesizer stopped itself (phase became 'idle')
+      if (phase === 'idle') {
+        this.stop(); // Reset UI state
+        return;
       }
+      
+      requestAnimationFrame(updateStatus);
     };
 
     updateStatus();
@@ -119,7 +123,7 @@ class DeepNoteApp {
   }
 
   private updateVisualization(data: AudioVisualization): void {
-    const { frequencies, amplitudes } = data;
+    const { frequencies, originalAmplitudes, compensatedAmplitudes } = data;
     const width = this.canvas.width / (window.devicePixelRatio || 1);
     const height = this.canvas.height / (window.devicePixelRatio || 1);
     
@@ -127,36 +131,57 @@ class DeepNoteApp {
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
     this.ctx.fillRect(0, 0, width, height);
     
-    // Draw frequency visualization
+    // Split canvas into two sections
+    const sectionHeight = height / 2;
     const barWidth = width / frequencies.length;
     
     frequencies.forEach((freq, index) => {
       const x = index * barWidth;
       const normalizedFreq = (freq - 200) / (2000 - 200); // Normalize to 0-1
-      const barHeight = normalizedFreq * height * 0.8;
-      const y = height - barHeight;
       
-      // Color based on frequency
-      const hue = (normalizedFreq * 240) + 180; // Blue to cyan range
-      const saturation = 80;
-      const lightness = 50 + (amplitudes[index] * 30);
+      // Original amplitudes (top section) - Red tones
+      const originalBarHeight = originalAmplitudes[index] * sectionHeight * 8; // Much larger scale
+      const originalY = sectionHeight - originalBarHeight;
       
-      this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-      this.ctx.fillRect(x, y, barWidth - 1, barHeight);
+      this.ctx.fillStyle = `hsla(0, 80%, 60%, 0.8)`; // Red for original
+      this.ctx.fillRect(x, originalY, barWidth - 1, originalBarHeight);
+      
+      // Compensated amplitudes (bottom section) - Green tones
+      const compensatedBarHeight = compensatedAmplitudes[index] * sectionHeight * 2; // Larger scale for compensation
+      const compensatedY = height - compensatedBarHeight;
+      
+      this.ctx.fillStyle = `hsla(120, 80%, 60%, 0.8)`; // Green for compensated
+      this.ctx.fillRect(x, compensatedY, barWidth - 1, compensatedBarHeight);
     });
     
-    // Draw frequency grid lines
+    // Draw section divider
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, sectionHeight);
+    this.ctx.lineTo(width, sectionHeight);
+    this.ctx.stroke();
+    
+    // Draw frequency grid lines for both sections
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
     this.ctx.lineWidth = 1;
     
     const gridFreqs = [200, 400, 800, 1600];
     gridFreqs.forEach(freq => {
       const normalizedFreq = (freq - 200) / (2000 - 200);
-      const y = height - (normalizedFreq * height * 0.8);
       
+      // Top section grid lines
+      const topY = sectionHeight - (normalizedFreq * sectionHeight * 0.8);
       this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(width, y);
+      this.ctx.moveTo(0, topY);
+      this.ctx.lineTo(width, topY);
+      this.ctx.stroke();
+      
+      // Bottom section grid lines  
+      const bottomY = height - (normalizedFreq * sectionHeight * 0.8);
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, bottomY);
+      this.ctx.lineTo(width, bottomY);
       this.ctx.stroke();
     });
   }

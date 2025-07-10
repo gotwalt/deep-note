@@ -138,6 +138,35 @@ header p {
     text-align: center;
 }
 
+.viz-legend {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.legend-color.original {
+    background: hsla(0, 80%, 60%, 0.8);
+}
+
+.legend-color.compensated {
+    background: hsla(120, 80%, 60%, 0.8);
+}
+
 #visualizer {
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 10px;
