@@ -26,7 +26,7 @@ This project recreates the famous THX Deep Note - that dramatic crescendo you he
 
 ## How It Works
 
-The THX Deep Note follows a specific mathematical and acoustic structure:
+The THX Deep Note follows a specific mathematical and acoustic structure with configurable timing:
 
 ### Phase 1: Chaos (0-4 seconds)
 - 30 oscillators start at random frequencies between 200-400Hz
@@ -38,14 +38,33 @@ The THX Deep Note follows a specific mathematical and acoustic structure:
 - Uses cosine-based easing for natural-sounding transitions
 - Equal loudness compensation is applied to balance perceived volume
 
-### Phase 3: Sustain (7-11 seconds)
+### Phase 3: Sustain (variable duration)
 - All voices lock to their final frequencies forming a perfect D major chord
 - Frequencies span 5 octaves: D2 (73Hz) to A6 (1760Hz)
 - Chord tones: D, F#, A repeated across octaves
+- Duration = total duration - chaos duration - convergence duration - fade duration
 
-### Phase 4: Fade (11-12 seconds)
+### Phase 4: Fade (configurable)
 - Exponential fade-out for natural ending
 - Preserves harmonic relationships during fade
+- Default 1 second, but can be customized
+
+## Flexible Duration
+
+The synthesizer supports configurable duration and fade-out timing:
+
+```javascript
+// Default timing (12 seconds total, 1 second fade)
+synthesizer.play();
+
+// Short version (8 seconds total, 0.5 second fade)
+synthesizer.play(8, 0.5);
+
+// Long cinematic version (30 seconds total, 3 second fade)
+synthesizer.play(30, 3);
+```
+
+The visualization automatically adjusts to show the correct time scale on the X-axis.
 
 ## Equal Loudness Compensation
 

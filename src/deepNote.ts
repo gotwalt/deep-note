@@ -27,6 +27,8 @@ export class DeepNoteSynthesizer {
   private animationId: number | null = null;
   private onVisualizationUpdate?: (data: AudioVisualization) => void;
   private frequencyHistory: FrequencyPoint[][] = [];
+  private currentDuration: number = 12; // Runtime duration parameter
+  private currentFadeOut: number = 1;   // Runtime fade-out parameter
 
   // D major chord frequencies across 5 octaves
   private readonly targetFrequencies = [
@@ -53,8 +55,6 @@ export class DeepNoteSynthesizer {
       maxStartFreq: 400,
       chaosDuration: 4, // 2 measures at 120 BPM
       convergeDuration: 3, // 1.5 measures at 120 BPM
-      sustainDuration: 4, // 4 seconds sustain
-      fadeDuration: 1, // 1 second fade
       sampleRate: 44100,
       ...config
     };
@@ -120,12 +120,31 @@ export class DeepNoteSynthesizer {
   }
 
   public getTotalDuration(): number {
-    return this.config.chaosDuration + this.config.convergeDuration + 
-           this.config.sustainDuration + this.config.fadeDuration;
+    return this.currentDuration;
+  }
+  
+  private getSustainDuration(): number {
+    return this.currentDuration - this.config.chaosDuration - this.config.convergeDuration - this.currentFadeOut;
   }
 
-  public async start(): Promise<void> {
+  /**
+   * Start playing the Deep Note with specified duration and fade-out
+   * 
+   * @param duration - Total duration in seconds (default: 12)
+   * @param fadeOut - Fade-out duration in seconds (default: 1)
+   */
+  public async play(duration: number = 12, fadeOut: number = 1): Promise<void> {
     if (this.phase !== 'idle') return;
+    
+    // Validate parameters
+    const minDuration = this.config.chaosDuration + this.config.convergeDuration + fadeOut + 0.5;
+    if (duration < minDuration) {
+      throw new Error(`Duration must be at least ${minDuration}s (chaos + convergence + fadeOut + 0.5s sustain)`);
+    }
+
+    // Store runtime parameters
+    this.currentDuration = duration;
+    this.currentFadeOut = fadeOut;
 
     // Resume audio context if suspended
     if (this.audioContext.state === 'suspended') {
@@ -142,24 +161,28 @@ export class DeepNoteSynthesizer {
 
     this.scheduleEnding();
   }
+  
+  /** @deprecated Use play(duration, fadeOut) instead */
+  public async start(): Promise<void> {
+    return this.play();
+  }
 
   private scheduleEnding() {
-    const fadeStartTime = this.config.chaosDuration + this.config.convergeDuration + this.config.sustainDuration;
-    const totalDuration = this.getTotalDuration();
+    const fadeStartTime = this.config.chaosDuration + this.config.convergeDuration + this.getSustainDuration();
     
     setTimeout(() => {
       if (this.phase !== 'idle') {
         const currentTime = this.audioContext.currentTime;
         
         // Exponential fade-out on master gain (sounds more natural)
-        this.masterGain.gain.exponentialRampToValueAtTime(0.001, currentTime + this.config.fadeDuration);
+        this.masterGain.gain.exponentialRampToValueAtTime(0.001, currentTime + this.currentFadeOut);
         
         // Stop everything after fade completes
         setTimeout(() => {
           if (this.phase !== 'idle') {
             this.stop();
           }
-        }, this.config.fadeDuration * 1000);
+        }, this.currentFadeOut * 1000);
       }
     }, fadeStartTime * 1000);
   }
@@ -275,8 +298,9 @@ export class DeepNoteSynthesizer {
       const currentTime = this.audioContext.currentTime;
       const elapsed = currentTime - this.startTime;
       
-      // Update phase
-      if (elapsed > this.config.chaosDuration + this.config.convergeDuration) {
+      // Update phase based on dynamic timing
+      const sustainStartTime = this.config.chaosDuration + this.config.convergeDuration;
+      if (elapsed > sustainStartTime) {
         this.phase = 'sustain';
       } else if (elapsed > this.config.chaosDuration) {
         this.phase = 'converge';

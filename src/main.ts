@@ -69,7 +69,9 @@ class DeepNoteApp {
     this.stopBtn.disabled = false;
 
     try {
-      await this.synthesizer.start();
+      // Use default 12 second duration with 1 second fade-out
+      // Could be made configurable via UI controls in the future
+      await this.synthesizer.play(12, 1);
       this.startStatusUpdates();
     } catch (error) {
       console.error('Error starting synthesizer:', error);
@@ -119,8 +121,8 @@ class DeepNoteApp {
 
     this.phaseText.textContent = phaseNames[phase as keyof typeof phaseNames] || 'Unknown';
     
-    // Update progress bar
-    const totalDuration = 7; // 4 seconds chaos + 3 seconds converge
+    // Update progress bar based on total synthesizer duration
+    const totalDuration = this.synthesizer.getTotalDuration();
     const progress = Math.min(elapsed / totalDuration, 1) * 100;
     this.phaseProgress.style.width = `${progress}%`;
   }

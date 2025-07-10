@@ -55,12 +55,6 @@ export interface DeepNoteConfig {
   /** Duration of convergence phase in seconds (default: 3) */
   convergeDuration: number;
   
-  /** Duration of sustain phase in seconds (default: 4) */
-  sustainDuration: number;
-  
-  /** Duration of fade-out in seconds (default: 1) */
-  fadeDuration: number;
-  
   /** Audio sample rate in Hz (default: 44100) */
   sampleRate: number;
 }

@@ -179,8 +179,9 @@ private getFrequencyColor(targetFreq: number): string {
 
 ## Configuration System
 
-All timing and behavior is configurable via `DeepNoteConfig`:
+The synthesizer uses a combination of static configuration and runtime parameters:
 
+### Static Configuration (`DeepNoteConfig`)
 ```typescript
 interface DeepNoteConfig {
   voiceCount: number;           // Number of oscillators (default: 30)
@@ -188,19 +189,31 @@ interface DeepNoteConfig {
   maxStartFreq: number;         // Random start range max (default: 400Hz)
   chaosDuration: number;        // Chaos phase length (default: 4s)
   convergeDuration: number;     // Convergence phase length (default: 3s)
-  sustainDuration: number;      // Sustain phase length (default: 4s)
-  fadeDuration: number;         // Fade out length (default: 1s)
   sampleRate: number;           // Audio sample rate (default: 44100Hz)
 }
 ```
 
-**Total Duration Calculation:**
+### Runtime Parameters (New Flexible API)
 ```typescript
+// New parameterized play method
+public async play(duration: number = 12, fadeOut: number = 1): Promise<void>
+
+// Dynamic calculations
+private getSustainDuration(): number {
+  return this.currentDuration - this.config.chaosDuration - 
+         this.config.convergeDuration - this.currentFadeOut;
+}
+
 public getTotalDuration(): number {
-  return this.config.chaosDuration + this.config.convergeDuration + 
-         this.config.sustainDuration + this.config.fadeDuration;
+  return this.currentDuration; // Now returns runtime parameter
 }
 ```
+
+### Benefits of New API
+- **Flexible timing**: Can create 8-second or 30-second Deep Notes
+- **Accurate visualization**: X-axis automatically scales to actual duration
+- **Parameter validation**: Ensures minimum duration for proper phase progression
+- **Backward compatibility**: `start()` method still works via delegation
 
 ## Phase Management
 
