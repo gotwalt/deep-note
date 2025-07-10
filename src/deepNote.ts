@@ -1,5 +1,22 @@
 import { DeepNoteVoice, DeepNoteConfig, AudioVisualization, DeepNotePhase, FrequencyPoint } from './types.js';
 
+/**
+ * THX Deep Note Synthesizer
+ * 
+ * Recreates the iconic THX "Deep Note" audio logo with the following characteristics:
+ * - 30 voices starting at random frequencies (200-400Hz)
+ * - Smooth convergence to D major chord across 5 octaves
+ * - Equal loudness compensation for balanced perceived volume
+ * - Real-time frequency tracking for visualization
+ * 
+ * Audio phases:
+ * 1. Chaos (4s): Random frequencies with gradual fade-in
+ * 2. Convergence (3s): Smooth transition to target chord tones
+ * 3. Sustain (4s): Hold final D major chord
+ * 4. Fade (1s): Exponential fade-out
+ * 
+ * @author Vibe-coded experiment with Claude AI
+ */
 export class DeepNoteSynthesizer {
   private audioContext: AudioContext;
   private voices: DeepNoteVoice[] = [];
@@ -49,8 +66,21 @@ export class DeepNoteSynthesizer {
   }
 
   /**
-   * Calculate equal loudness compensation gain based on ISO 226 40-phon curve
-   * Reference: 1000Hz = 0dB compensation
+   * Calculate equal loudness compensation gain
+   * 
+   * Human hearing perceives different frequencies at different loudness levels.
+   * This function applies frequency-dependent gain adjustments to make all
+   * frequencies sound equally loud to the human ear.
+   * 
+   * Compensation levels:
+   * - Very low freq (<100Hz): 3x boost (deep bass needs significant boost)
+   * - Low freq (100-200Hz): 2x boost 
+   * - Lower mids (200-500Hz): 1.5x boost
+   * - Mid freq (500-2000Hz): 1x reference (most sensitive hearing range)
+   * - High freq (>2000Hz): 1.2-1.5x boost
+   * 
+   * @param frequency - The frequency in Hz to calculate compensation for
+   * @returns Linear gain multiplier (1.0 = no change, 3.0 = +9.5dB boost)
    */
   private calculateCompensationGain(frequency: number): number {
     // Much simpler and more intuitive equal loudness compensation

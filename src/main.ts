@@ -1,6 +1,21 @@
 import { DeepNoteSynthesizer } from './deepNote.js';
 import { AudioVisualization } from './types.js';
 
+/**
+ * THX Deep Note Application Controller
+ * 
+ * Manages the user interface, controls the synthesizer, and renders
+ * the real-time frequency visualization as an interactive line chart.
+ * 
+ * Features:
+ * - Play/stop controls with proper state management
+ * - Real-time phase and timing displays
+ * - Frequency line chart with logarithmic scaling
+ * - Color-coded visualization by chord tones (D, F#, A)
+ * - Responsive canvas rendering with proper DPI handling
+ * 
+ * @author Vibe-coded experiment with Claude AI
+ */
 class DeepNoteApp {
   private synthesizer: DeepNoteSynthesizer;
   private playBtn!: HTMLButtonElement;
@@ -135,6 +150,27 @@ class DeepNoteApp {
     this.drawFrequencyLineChart(frequencyHistory, frequencies, currentTime, totalDuration, width, height);
   }
   
+  /**
+   * Render the main frequency line chart visualization
+   * 
+   * Creates a time-series line chart showing how each voice's frequency
+   * evolves from chaos to the final D major chord. Uses logarithmic
+   * frequency scaling to match musical perception.
+   * 
+   * Chart elements:
+   * - X-axis: Time (0 to total duration)
+   * - Y-axis: Frequency (70Hz to 1800Hz, logarithmic scale)
+   * - Lines: One per voice, color-coded by target chord tone
+   * - Grid: Horizontal lines at target frequencies, vertical at time intervals
+   * - Indicator: Current playback time as vertical white line
+   * 
+   * @param frequencyHistory - Array of frequency point arrays, one per voice
+   * @param targetFrequencies - Final chord frequencies for color coding
+   * @param currentTime - Current playback time in seconds
+   * @param totalDuration - Total synthesis duration in seconds
+   * @param width - Canvas width in pixels
+   * @param height - Canvas height in pixels
+   */
   private drawFrequencyLineChart(frequencyHistory: any[][], targetFrequencies: number[], currentTime: number, totalDuration: number, width: number, height: number): void {
     const margin = { top: 40, right: 40, bottom: 40, left: 60 };
     const chartWidth = width - margin.left - margin.right;
