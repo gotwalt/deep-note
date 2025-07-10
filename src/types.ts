@@ -13,13 +13,22 @@ export interface DeepNoteConfig {
   maxStartFreq: number;
   chaosDuration: number; // in seconds
   convergeDuration: number; // in seconds
+  sustainDuration: number; // in seconds
+  fadeDuration: number; // in seconds
   sampleRate: number;
+}
+
+export interface FrequencyPoint {
+  time: number;
+  frequency: number;
 }
 
 export interface AudioVisualization {
   frequencies: number[];
-  originalAmplitudes: number[];
-  compensatedAmplitudes: number[];
+  currentFrequencies: number[];
+  frequencyHistory: FrequencyPoint[][];
+  currentTime: number;
+  totalDuration: number;
   timestamp: number;
 }
 

@@ -1,4 +1,4 @@
-import { DeepNoteVoice, DeepNoteConfig, AudioVisualization, DeepNotePhase } from './types.js';
+import { DeepNoteVoice, DeepNoteConfig, AudioVisualization, DeepNotePhase, FrequencyPoint } from './types.js';
 
 export class DeepNoteSynthesizer {
   private audioContext: AudioContext;
@@ -9,6 +9,7 @@ export class DeepNoteSynthesizer {
   private startTime: number = 0;
   private animationId: number | null = null;
   private onVisualizationUpdate?: (data: AudioVisualization) => void;
+  private frequencyHistory: FrequencyPoint[][] = [];
 
   // D major chord frequencies across 5 octaves
   private readonly targetFrequencies = [
@@ -35,6 +36,8 @@ export class DeepNoteSynthesizer {
       maxStartFreq: 400,
       chaosDuration: 4, // 2 measures at 120 BPM
       convergeDuration: 3, // 1.5 measures at 120 BPM
+      sustainDuration: 4, // 4 seconds sustain
+      fadeDuration: 1, // 1 second fade
       sampleRate: 44100,
       ...config
     };
@@ -86,6 +89,11 @@ export class DeepNoteSynthesizer {
     this.onVisualizationUpdate = callback;
   }
 
+  public getTotalDuration(): number {
+    return this.config.chaosDuration + this.config.convergeDuration + 
+           this.config.sustainDuration + this.config.fadeDuration;
+  }
+
   public async start(): Promise<void> {
     if (this.phase !== 'idle') return;
 
@@ -95,6 +103,7 @@ export class DeepNoteSynthesizer {
     }
 
     this.initializeVoices();
+    this.initializeFrequencyHistory();
     this.startTime = this.audioContext.currentTime;
     this.phase = 'chaos';
     
@@ -105,23 +114,28 @@ export class DeepNoteSynthesizer {
   }
 
   private scheduleEnding() {
-    // Schedule fade-out starting at 9 seconds, complete stop at 10 seconds
+    const fadeStartTime = this.config.chaosDuration + this.config.convergeDuration + this.config.sustainDuration;
+    const totalDuration = this.getTotalDuration();
+    
     setTimeout(() => {
       if (this.phase !== 'idle') {
         const currentTime = this.audioContext.currentTime;
-        const fadeTime = 1.0; // 1 second fade
         
         // Exponential fade-out on master gain (sounds more natural)
-        this.masterGain.gain.exponentialRampToValueAtTime(0.001, currentTime + fadeTime);
+        this.masterGain.gain.exponentialRampToValueAtTime(0.001, currentTime + this.config.fadeDuration);
         
         // Stop everything after fade completes
         setTimeout(() => {
           if (this.phase !== 'idle') {
             this.stop();
           }
-        }, fadeTime * 1000);
+        }, this.config.fadeDuration * 1000);
       }
-    }, 11000); // Start fade at 11 seconds
+    }, fadeStartTime * 1000);
+  }
+
+  private initializeFrequencyHistory(): void {
+    this.frequencyHistory = this.voices.map(() => []);
   }
 
   public stop(): void {
@@ -130,6 +144,7 @@ export class DeepNoteSynthesizer {
       voice.oscillator.stop();
     });
     this.voices = [];
+    this.frequencyHistory = [];
     
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
@@ -238,7 +253,7 @@ export class DeepNoteSynthesizer {
       }
       
       // Calculate current frequencies for visualization
-      const frequencies = this.voices.map(voice => {
+      const currentFrequencies = this.voices.map(voice => {
         if (this.phase === 'chaos') {
           return voice.startFrequency;
         } else if (this.phase === 'converge') {
@@ -251,19 +266,25 @@ export class DeepNoteSynthesizer {
         }
       });
       
-      // Generate amplitude data based on actual voice gains
-      const baseAmplitudes = this.voices.map(() => 0.5 + Math.random() * 0.5);
-      const baseGain = 0.1;
-      const originalAmplitudes = baseAmplitudes.map(amp => baseGain * amp);
-      const compensatedAmplitudes = this.voices.map((voice, index) => 
-        originalAmplitudes[index] * voice.compensationGain
-      );
+      // Target frequencies for reference (what we're converging to)
+      const frequencies = this.voices.map(voice => voice.targetFrequency);
+      
+      // Track frequency history
+      const relativeTime = elapsed;
+      currentFrequencies.forEach((freq, index) => {
+        this.frequencyHistory[index].push({
+          time: relativeTime,
+          frequency: freq
+        });
+      });
       
       if (this.onVisualizationUpdate) {
         this.onVisualizationUpdate({
           frequencies,
-          originalAmplitudes,
-          compensatedAmplitudes,
+          currentFrequencies,
+          frequencyHistory: [...this.frequencyHistory], // Copy for immutability
+          currentTime: relativeTime,
+          totalDuration: this.getTotalDuration(),
           timestamp: currentTime
         });
       }

@@ -159,12 +159,23 @@ header p {
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.legend-color.original {
-    background: hsla(0, 80%, 60%, 0.8);
+.legend-color.d-note {
+    background: #ff6b6b;
 }
 
-.legend-color.compensated {
-    background: hsla(120, 80%, 60%, 0.8);
+.legend-color.fs-note {
+    background: #4ecdc4;
+}
+
+.legend-color.a-note {
+    background: #45b7d1;
+}
+
+.chart-description {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #cccccc;
 }
 
 #visualizer {

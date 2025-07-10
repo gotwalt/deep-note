@@ -123,74 +123,134 @@ class DeepNoteApp {
   }
 
   private updateVisualization(data: AudioVisualization): void {
-    const { frequencies, originalAmplitudes, compensatedAmplitudes } = data;
+    const { frequencies, frequencyHistory, currentTime, totalDuration } = data;
     const width = this.canvas.width / (window.devicePixelRatio || 1);
     const height = this.canvas.height / (window.devicePixelRatio || 1);
     
     // Clear canvas
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, width, height);
     
-    // Split canvas into two sections
-    const sectionHeight = height / 2;
-    const barWidth = width / frequencies.length;
+    // Draw frequency line chart
+    this.drawFrequencyLineChart(frequencyHistory, frequencies, currentTime, totalDuration, width, height);
+  }
+  
+  private drawFrequencyLineChart(frequencyHistory: any[][], targetFrequencies: number[], currentTime: number, totalDuration: number, width: number, height: number): void {
+    const margin = { top: 40, right: 40, bottom: 40, left: 60 };
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
     
-    frequencies.forEach((freq, index) => {
-      const x = index * barWidth;
-      const normalizedFreq = (freq - 200) / (2000 - 200); // Normalize to 0-1
-      
-      // Original amplitudes (top section) - Red tones
-      const originalBarHeight = originalAmplitudes[index] * sectionHeight * 8; // Much larger scale
-      const originalY = sectionHeight - originalBarHeight;
-      
-      this.ctx.fillStyle = `hsla(0, 80%, 60%, 0.8)`; // Red for original
-      this.ctx.fillRect(x, originalY, barWidth - 1, originalBarHeight);
-      
-      // Compensated amplitudes (bottom section) - Green tones
-      const compensatedBarHeight = compensatedAmplitudes[index] * sectionHeight * 2; // Larger scale for compensation
-      const compensatedY = height - compensatedBarHeight;
-      
-      this.ctx.fillStyle = `hsla(120, 80%, 60%, 0.8)`; // Green for compensated
-      this.ctx.fillRect(x, compensatedY, barWidth - 1, compensatedBarHeight);
-    });
+    // Frequency range (logarithmic)
+    const minFreq = 70;
+    const maxFreq = 1800;
     
-    // Draw section divider
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, sectionHeight);
-    this.ctx.lineTo(width, sectionHeight);
-    this.ctx.stroke();
+    // Draw grid and labels first
+    this.drawFrequencyGrid(margin, chartWidth, chartHeight, totalDuration, minFreq, maxFreq);
     
-    // Draw frequency grid lines for both sections
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    this.ctx.lineWidth = 1;
-    
-    const gridFreqs = [200, 400, 800, 1600];
-    gridFreqs.forEach(freq => {
-      const normalizedFreq = (freq - 200) / (2000 - 200);
+    // Draw frequency lines for each voice
+    frequencyHistory.forEach((history, voiceIndex) => {
+      if (history.length < 2) return;
       
-      // Top section grid lines
-      const topY = sectionHeight - (normalizedFreq * sectionHeight * 0.8);
+      const targetFreq = targetFrequencies[voiceIndex];
+      const color = this.getFrequencyColor(targetFreq);
+      
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = 1.5;
+      this.ctx.globalAlpha = 0.7;
+      
       this.ctx.beginPath();
-      this.ctx.moveTo(0, topY);
-      this.ctx.lineTo(width, topY);
-      this.ctx.stroke();
-      
-      // Bottom section grid lines  
-      const bottomY = height - (normalizedFreq * sectionHeight * 0.8);
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, bottomY);
-      this.ctx.lineTo(width, bottomY);
+      history.forEach((point, index) => {
+        const x = margin.left + (point.time / totalDuration) * chartWidth;
+        const y = margin.top + chartHeight - (this.freqToLogY(point.frequency, minFreq, maxFreq) * chartHeight);
+        
+        if (index === 0) {
+          this.ctx.moveTo(x, y);
+        } else {
+          this.ctx.lineTo(x, y);
+        }
+      });
       this.ctx.stroke();
     });
+    
+    this.ctx.globalAlpha = 1.0;
+    
+    // Draw current time indicator
+    this.drawTimeIndicator(currentTime, totalDuration, margin, chartWidth, chartHeight);
   }
 
+  private freqToLogY(freq: number, minFreq: number, maxFreq: number): number {
+    return Math.log(freq / minFreq) / Math.log(maxFreq / minFreq);
+  }
+  
+  private getFrequencyColor(targetFreq: number): string {
+    // Color code by note type in the D major chord
+    const D_notes = [73.42, 146.83, 293.66, 587.33, 1174.66];
+    const Fs_notes = [92.50, 185.00, 369.99, 739.99, 1479.98];
+    const A_notes = [110.00, 220.00, 440.00, 880.00, 1760.00];
+    
+    if (D_notes.some(freq => Math.abs(freq - targetFreq) < 1)) {
+      return '#ff6b6b'; // Red for D notes
+    } else if (Fs_notes.some(freq => Math.abs(freq - targetFreq) < 1)) {
+      return '#4ecdc4'; // Teal for F# notes  
+    } else if (A_notes.some(freq => Math.abs(freq - targetFreq) < 1)) {
+      return '#45b7d1'; // Blue for A notes
+    } else {
+      return '#95a5a6'; // Gray for others
+    }
+  }
+  
+  private drawFrequencyGrid(margin: any, chartWidth: number, chartHeight: number, totalDuration: number, minFreq: number, maxFreq: number): void {
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    this.ctx.lineWidth = 1;
+    this.ctx.font = '12px Arial';
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    
+    // Horizontal grid lines (frequencies)
+    const noteFreqs = [73.42, 92.50, 110.00, 146.83, 185.00, 220.00, 293.66, 369.99, 440.00, 587.33, 739.99, 880.00, 1174.66, 1479.98, 1760.00];
+    noteFreqs.forEach(freq => {
+      const y = margin.top + chartHeight - (this.freqToLogY(freq, minFreq, maxFreq) * chartHeight);
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(margin.left, y);
+      this.ctx.lineTo(margin.left + chartWidth, y);
+      this.ctx.stroke();
+      
+      // Frequency labels
+      this.ctx.textAlign = 'right';
+      this.ctx.fillText(`${Math.round(freq)}Hz`, margin.left - 10, y + 4);
+    });
+    
+    // Vertical grid lines (time)
+    for (let t = 0; t <= totalDuration; t += 2) {
+      const x = margin.left + (t / totalDuration) * chartWidth;
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, margin.top);
+      this.ctx.lineTo(x, margin.top + chartHeight);
+      this.ctx.stroke();
+      
+      // Time labels
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(`${t}s`, x, margin.top + chartHeight + 20);
+    }
+  }
+  
+  private drawTimeIndicator(currentTime: number, totalDuration: number, margin: any, chartWidth: number, chartHeight: number): void {
+    const x = margin.left + (currentTime / totalDuration) * chartWidth;
+    
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, margin.top);
+    this.ctx.lineTo(x, margin.top + chartHeight);
+    this.ctx.stroke();
+  }
+  
   private clearVisualization(): void {
     const width = this.canvas.width / (window.devicePixelRatio || 1);
     const height = this.canvas.height / (window.devicePixelRatio || 1);
     
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, width, height);
   }
 }
