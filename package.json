@@ -1,0 +1,26 @@
+{
+  "name": "thx-deep-note",
+  "version": "1.0.0",
+  "description": "Interactive THX Deep Note synthesizer",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "build-tsc": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.12",
+    "typescript": "^5.0.0",
+    "vite": "^6.3.5"
+  },
+  "keywords": [
+    "audio",
+    "synthesizer",
+    "thx",
+    "deep-note",
+    "web-audio"
+  ],
+  "author": "",
+  "license": "MIT"
+}

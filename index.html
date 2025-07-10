@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THX Deep Note Synthesizer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>THX Deep Note</h1>
+            <p>Interactive recreation of the iconic THX audio logo</p>
+        </header>
+        
+        <main>
+            <div class="controls">
+                <button id="playBtn" class="play-button">
+                    <span class="play-icon">▶</span>
+                    <span class="play-text">Play Deep Note</span>
+                </button>
+                <button id="stopBtn" class="stop-button" disabled>
+                    <span class="stop-icon">⏹</span>
+                    <span class="stop-text">Stop</span>
+                </button>
+            </div>
+            
+            <div class="status">
+                <div class="phase-indicator">
+                    <span id="phaseText">Ready</span>
+                    <div class="phase-bar">
+                        <div id="phaseProgress" class="phase-progress"></div>
+                    </div>
+                </div>
+                <div class="time-display">
+                    <span id="timeText">0:00</span>
+                </div>
+            </div>
+            
+            <div class="visualization">
+                <canvas id="visualizer" width="800" height="300"></canvas>
+                <div class="freq-labels">
+                    <span>200Hz</span>
+                    <span>400Hz</span>
+                    <span>800Hz</span>
+                    <span>1600Hz</span>
+                </div>
+            </div>
+            
+            <div class="info">
+                <h3>About the Deep Note</h3>
+                <p>
+                    The THX Deep Note begins with 30 voices at random frequencies between 200-400Hz.
+                    Over 2 measures, these voices remain chaotic, then converge over 1.5 measures
+                    into a D major chord spread across 5 octaves, creating the iconic crescendo.
+                </p>
+            </div>
+        </main>
+    </div>
+    
+    <script type="module" src="src/main.ts"></script>
+</body>
+</html>
